@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Interactive Kaleidoscope</title>
+  <title>Interactive Art Deco Design Generator</title>
   <style>
     canvas {
       border: 1px solid #000;
@@ -12,6 +12,9 @@
       text-align: center;
       margin-top: 20px;
     }
+    .pattern-select {
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -19,8 +22,21 @@
   <div class="controls">
     <label for="segments">Segments:</label>
     <input type="range" id="segments" min="1" max="20" value="6">
-    <label for="color">Color:</label>
-    <input type="color" id="color" value="#ff0000">
+    <div>
+      <label for="color">Color:</label>
+      <input type="color" id="color" value="#ff0000">
+      <button id="addColor">Add Color</button>
+    </div>
+    <div id="colorsList"></div>
+    <div class="pattern-select">
+      <label for="pattern">Pattern:</label>
+      <select id="pattern">
+        <option value="freeform">Freeform</option>
+        <option value="circles">Circles</option>
+        <option value="squares">Squares</option>
+        <option value="triangles">Triangles</option>
+      </select>
+    </div>
   </div>
 
   <script>
@@ -31,7 +47,23 @@
 
     let userInput = [];
     let numSegments = 6;
-    let color = '#ff0000';
+    let colors = ['#ff0000'];
+    const colorsList = document.getElementById('colorsList');
+    const addColorButton = document.getElementById('addColor');
+    const patternSelect = document.getElementById('pattern');
+
+    function addColor() {
+      const newColor = document.createElement('div');
+      newColor.style.backgroundColor = colorInput.value;
+      newColor.addEventListener('click', function() {
+        colors = colors.filter(c => c !== newColor.style.backgroundColor);
+        newColor.remove();
+      });
+      colorsList.appendChild(newColor);
+      colors.push(colorInput.value);
+    }
+
+    addColorButton.addEventListener('click', addColor);
 
     function drawKaleidoscope() {
       const centerX = canvas.width / 2;
@@ -51,11 +83,25 @@
         ctx.moveTo(0, 0);
 
         for (let j = 0; j < userInput.length; j++) {
-          ctx.lineTo(userInput[j].x, userInput[j].y);
+          const color = colors[j % colors.length];
+          ctx.strokeStyle = color;
+
+          if (patternSelect.value === 'circles') {
+            ctx.arc(userInput[j].x, userInput[j].y, 10, 0, Math.PI * 2);
+          } else if (patternSelect.value === 'squares') {
+            ctx.rect(userInput[j].x - 10, userInput[j].y - 10, 20, 20);
+          } else if (patternSelect.value === 'triangles') {
+            ctx.moveTo(userInput[j].x, userInput[j].y - 10);
+            ctx.lineTo(userInput[j].x - 10, userInput[j].y + 10);
+            ctx.lineTo(userInput[j].x + 10, userInput[j].y + 10);
+            ctx.closePath();
+          } else {
+            ctx.lineTo(userInput[j].x, userInput[j].y);
+          }
+
+          ctx.stroke();
         }
 
-        ctx.strokeStyle = color;
-        ctx.stroke();
         ctx.restore();
       }
     }
@@ -85,8 +131,8 @@
       drawKaleidoscope();
     });
 
-    colorInput.addEventListener('input', function() {
-      color = colorInput.value;
+    patternSelect.addEventListener('change', function() {
+      userInput = [];
       drawKaleidoscope();
     });
 
