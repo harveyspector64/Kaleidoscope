@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Authentic Kaleidoscope Experience</title>
+  <title>Interactive Kaleidoscope Experience</title>
   <style>
     canvas {
       display: block;
@@ -11,82 +11,206 @@
       text-align: center;
       margin-top: 20px;
     }
+    .controls button {
+      margin: 5px;
+    }
   </style>
 </head>
 <body>
   <canvas id="kaleidoscope"></canvas>
   <div class="controls">
+    <label for="shapeType">Shape Type:</label>
+    <select id="shapeType">
+      <option value="circles">Circles</option>
+      <option value="triangles">Triangles</option>
+      <option value="stars">Stars</option>
+      <option value="polygons">Polygons</option>
+    </select>
+    <label for="colorPicker">Color:</label>
+    <input type="color" id="colorPicker" value="#FF6B6B">
+    <button id="randomizeBtn">Randomize</button>
+    <button id="snapshotBtn">Take Snapshot</button>
+    <label for="symmetry">Symmetry:</label>
+    <select id="symmetry">
+      <option value="radial">Radial</option>
+      <option value="bilateral">Bilateral</option>
+      <option value="rotational">Rotational</option>
+    </select>
     <label for="segments">Segments:</label>
-    <input type="range" id="segments" min="4" max="12" step="2" value="6">
-    <label for="speed">Rotation Speed:</label>
-    <input type="range" id="speed" min="0.1" max="2" step="0.1" value="1">
+    <input type="range" id="segments" min="4" max="12" step="1" value="6">
+    <label for="zoom">Zoom:</label>
+    <input type="range" id="zoom" min="0.5" max="2" step="0.1" value="1">
+    <label for="bgColor">Background:</label>
+    <input type="color" id="bgColor" value="#FFFFFF">
+    <button id="helpBtn">Help</button>
   </div>
 
   <script>
     const canvas = document.getElementById('kaleidoscope');
     const ctx = canvas.getContext('2d');
+    const shapeTypeSelect = document.getElementById('shapeType');
+    const colorPicker = document.getElementById('colorPicker');
+    const randomizeBtn = document.getElementById('randomizeBtn');
+    const snapshotBtn = document.getElementById('snapshotBtn');
+    const symmetrySelect = document.getElementById('symmetry');
     const segmentsInput = document.getElementById('segments');
-    const speedInput = document.getElementById('speed');
+    const zoomInput = document.getElementById('zoom');
+    const bgColorInput = document.getElementById('bgColor');
+    const helpBtn = document.getElementById('helpBtn');
 
     let shapes = [];
     let numSegments = 6;
-    let rotationSpeed = 1;
-    let rotationAngle = 0;
+    let zoomLevel = 1;
     let isDragging = false;
     let lastX = 0;
     let lastY = 0;
+    let bgColor = '#FFFFFF';
 
-    const colors = [
-      '#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#6F69AC', '#FFB2FF',
-      '#FF7F50', '#FFD700', '#50C878', '#1E90FF', '#9370DB', '#FF69B4'
-    ];
+    const shapeTypes = {
+      circles: createCircle,
+      triangles: createTriangle,
+      stars: createStar,
+      polygons: createPolygon
+    };
 
-    function getRandomColor() {
-      return colors[Math.floor(Math.random() * colors.length)];
+    function createCircle(x, y, size, color) {
+      return {
+        type: 'circle',
+        x: x,
+        y: y,
+        size: size,
+        color: color
+      };
+    }
+
+    function createTriangle(x, y, size, color) {
+      return {
+        type: 'triangle',
+        x: x,
+        y: y,
+        size: size,
+        color: color
+      };
+    }
+
+    function createStar(x, y, size, color) {
+      return {
+        type: 'star',
+        x: x,
+        y: y,
+        size: size,
+        color: color
+      };
+    }
+
+    function createPolygon(x, y, size, color) {
+      return {
+        type: 'polygon',
+        x: x,
+        y: y,
+        size: size,
+        color: color,
+        sides: Math.floor(Math.random() * 4) + 3
+      };
     }
 
     function createShapes() {
       shapes = [];
+      const shapeType = shapeTypes[shapeTypeSelect.value];
+      const color = colorPicker.value;
+
       for (let i = 0; i < 20; i++) {
-        const shape = {
-          x: Math.random() * canvas.width / 2,
-          y: Math.random() * canvas.height / 2,
-          size: 10 + Math.random() * 40,
-          color: getRandomColor(),
-          angle: Math.random() * Math.PI * 2,
-          speed: 0.01 + Math.random() * 0.05
-        };
+        const x = Math.random() * canvas.width / 2;
+        const y = Math.random() * canvas.height / 2;
+        const size = 10 + Math.random() * 40;
+        const shape = shapeType(x, y, size, color);
         shapes.push(shape);
       }
+    }
+
+    function drawShape(shape) {
+      ctx.fillStyle = shape.color;
+      ctx.beginPath();
+
+      switch (shape.type) {
+        case 'circle':
+          ctx.arc(shape.x, shape.y, shape.size, 0, Math.PI * 2);
+          break;
+        case 'triangle':
+          ctx.moveTo(shape.x, shape.y - shape.size);
+          ctx.lineTo(shape.x - shape.size, shape.y + shape.size);
+          ctx.lineTo(shape.x + shape.size, shape.y + shape.size);
+          ctx.closePath();
+          break;
+        case 'star':
+          const numPoints = 5;
+          const innerRadius = shape.size / 2;
+          const outerRadius = shape.size;
+          const angle = Math.PI / numPoints;
+          ctx.moveTo(shape.x, shape.y - outerRadius);
+          for (let i = 0; i < numPoints; i++) {
+            const x1 = shape.x + Math.sin(i * angle * 2) * outerRadius;
+            const y1 = shape.y - Math.cos(i * angle * 2) * outerRadius;
+            ctx.lineTo(x1, y1);
+            const x2 = shape.x + Math.sin((i + 0.5) * angle * 2) * innerRadius;
+            const y2 = shape.y - Math.cos((i + 0.5) * angle * 2) * innerRadius;
+            ctx.lineTo(x2, y2);
+          }
+          ctx.closePath();
+          break;
+        case 'polygon':
+          const polygonAngle = (Math.PI * 2) / shape.sides;
+          ctx.moveTo(shape.x + shape.size * Math.cos(0), shape.y + shape.size * Math.sin(0));
+          for (let i = 1; i <= shape.sides; i++) {
+            ctx.lineTo(shape.x + shape.size * Math.cos(i * polygonAngle), shape.y + shape.size * Math.sin(i * polygonAngle));
+          }
+          ctx.closePath();
+          break;
+      }
+
+      ctx.fill();
     }
 
     function drawShapes() {
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
-      const radius = Math.min(centerX, centerY) * 0.8;
       const segmentAngle = (Math.PI * 2) / numSegments;
 
       ctx.save();
       ctx.translate(centerX, centerY);
-      ctx.rotate(rotationAngle);
+      ctx.scale(zoomLevel, zoomLevel);
+      ctx.rotate(Math.atan2(lastY - centerY, lastX - centerX));
 
       for (let i = 0; i < numSegments; i++) {
         ctx.save();
         ctx.rotate(i * segmentAngle);
 
         for (let j = 0; j < shapes.length; j++) {
-          const shape = shapes[j];
+          drawShape(shapes[j]);
 
-          ctx.fillStyle = shape.color;
-          ctx.beginPath();
-          ctx.arc(shape.x, shape.y, shape.size, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Mirroring effect
-          ctx.save();
-          ctx.scale(-1, 1);
-          ctx.fill();
-          ctx.restore();
+          // Apply symmetry
+          switch (symmetrySelect.value) {
+            case 'radial':
+              ctx.save();
+              ctx.scale(-1, 1);
+              drawShape(shapes[j]);
+              ctx.restore();
+              break;
+            case 'bilateral':
+              ctx.save();
+              ctx.scale(1, -1);
+              drawShape(shapes[j]);
+              ctx.restore();
+              break;
+            case 'rotational':
+              for (let k = 1; k < numSegments; k++) {
+                ctx.save();
+                ctx.rotate((k * Math.PI * 2) / numSegments);
+                drawShape(shapes[j]);
+                ctx.restore();
+              }
+              break;
+          }
         }
 
         ctx.restore();
@@ -95,18 +219,9 @@
       ctx.restore();
     }
 
-    function updateShapes() {
-      for (let i = 0; i < shapes.length; i++) {
-        const shape = shapes[i];
-        shape.angle += shape.speed * rotationSpeed;
-        shape.x = Math.cos(shape.angle) * (canvas.width / 4);
-        shape.y = Math.sin(shape.angle) * (canvas.height / 4);
-      }
-    }
-
     function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      updateShapes();
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       drawShapes();
       requestAnimationFrame(animate);
     }
@@ -120,19 +235,37 @@
     function onMouseMove(e) {
       if (!isDragging) return;
 
-      const currentX = e.clientX || e.touches[0].clientX;
-      const currentY = e.clientY || e.touches[0].clientY;
-      const deltaX = currentX - lastX;
-      const deltaY = currentY - lastY;
-
-      rotationAngle += (deltaX + deltaY) * 0.01;
-
-      lastX = currentX;
-      lastY = currentY;
+      lastX = e.clientX || e.touches[0].clientX;
+      lastY = e.clientY || e.touches[0].clientY;
     }
 
     function onMouseUp() {
       isDragging = false;
+    }
+
+    function onZoom(e) {
+      zoomLevel = parseFloat(zoomInput.value);
+    }
+
+    function takeSnapshot() {
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL();
+      link.download = 'kaleidoscope.png';
+      link.click();
+    }
+
+    function showHelp() {
+      alert(`Interactive Kaleidoscope Help:
+
+- Select a shape type from the dropdown menu
+- Click and drag to rotate the kaleidoscope
+- Use the color picker to change the color of the shapes
+- Adjust the number of segments using the slider
+- Use the zoom slider to zoom in and out
+- Choose a symmetry pattern from the dropdown menu
+- Click the "Randomize" button to generate a new pattern
+- Click the "Take Snapshot" button to save the current kaleidoscope image
+- Change the background color using the color picker`);
     }
 
     canvas.addEventListener('mousedown', onMouseDown);
@@ -142,13 +275,18 @@
     canvas.addEventListener('touchmove', onMouseMove);
     canvas.addEventListener('touchend', onMouseUp);
 
+    shapeTypeSelect.addEventListener('change', createShapes);
+    colorPicker.addEventListener('change', createShapes);
+    randomizeBtn.addEventListener('click', createShapes);
+    snapshotBtn.addEventListener('click', takeSnapshot);
     segmentsInput.addEventListener('input', function() {
       numSegments = parseInt(segmentsInput.value);
     });
-
-    speedInput.addEventListener('input', function() {
-      rotationSpeed = parseFloat(speedInput.value);
+    zoomInput.addEventListener('input', onZoom);
+    bgColorInput.addEventListener('change', function() {
+      bgColor = bgColorInput.value;
     });
+    helpBtn.addEventListener('click', showHelp);
 
     function resizeCanvas() {
       canvas.width = window.innerWidth;
