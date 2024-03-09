@@ -12,23 +12,37 @@
       text-align: center;
       margin-top: 20px;
     }
-    .pattern-select {
-      margin-top: 10px;
+    .controls div {
+      margin-bottom: 10px;
+    }
+    .color-box {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      margin-right: 5px;
+      border: 1px solid #000;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <canvas id="kaleidoscope"></canvas>
   <div class="controls">
-    <label for="segments">Segments:</label>
-    <input type="range" id="segments" min="1" max="20" value="6">
+    <div>
+      <label for="segments">Segments:</label>
+      <input type="range" id="segments" min="1" max="20" value="6">
+    </div>
+    <div>
+      <label for="size">Shape Size:</label>
+      <input type="range" id="size" min="5" max="50" value="10">
+    </div>
     <div>
       <label for="color">Color:</label>
       <input type="color" id="color" value="#ff0000">
       <button id="addColor">Add Color</button>
     </div>
     <div id="colorsList"></div>
-    <div class="pattern-select">
+    <div>
       <label for="pattern">Pattern:</label>
       <select id="pattern">
         <option value="freeform">Freeform</option>
@@ -37,30 +51,42 @@
         <option value="triangles">Triangles</option>
       </select>
     </div>
+    <div>
+      <button id="rewind">Rewind</button>
+      <button id="clear">Clear</button>
+    </div>
   </div>
 
   <script>
     const canvas = document.getElementById('kaleidoscope');
     const ctx = canvas.getContext('2d');
     const segmentsInput = document.getElementById('segments');
+    const sizeInput = document.getElementById('size');
     const colorInput = document.getElementById('color');
-
-    let userInput = [];
-    let numSegments = 6;
-    let colors = ['#ff0000'];
     const colorsList = document.getElementById('colorsList');
     const addColorButton = document.getElementById('addColor');
     const patternSelect = document.getElementById('pattern');
+    const rewindButton = document.getElementById('rewind');
+    const clearButton = document.getElementById('clear');
+
+    let userInput = {};
+    let numSegments = 6;
+    let shapeSize = 10;
+    let currentColor = '#ff0000';
+    let colors = ['#ff0000'];
 
     function addColor() {
       const newColor = document.createElement('div');
+      newColor.className = 'color-box';
       newColor.style.backgroundColor = colorInput.value;
       newColor.addEventListener('click', function() {
-        colors = colors.filter(c => c !== newColor.style.backgroundColor);
-        newColor.remove();
+        currentColor = newColor.style.backgroundColor;
+        colorInput.value = currentColor;
       });
       colorsList.appendChild(newColor);
       colors.push(colorInput.value);
+      userInput[colorInput.value] = [];
+      currentColor = colorInput.value;
     }
 
     addColorButton.addEventListener('click', addColor);
@@ -68,38 +94,41 @@
     function drawKaleidoscope() {
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
-      const radius = Math.min(centerX, centerY);
+      const angle = Math.PI * 2 / numSegments;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const angle = Math.PI * 2 / numSegments;
 
       for (let i = 0; i < numSegments; i++) {
         ctx.save();
         ctx.translate(centerX, centerY);
         ctx.rotate(i * angle);
 
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-
-        for (let j = 0; j < userInput.length; j++) {
-          const color = colors[j % colors.length];
+        for (let color in userInput) {
           ctx.strokeStyle = color;
+          ctx.fillStyle = color;
 
-          if (patternSelect.value === 'circles') {
-            ctx.arc(userInput[j].x, userInput[j].y, 10, 0, Math.PI * 2);
-          } else if (patternSelect.value === 'squares') {
-            ctx.rect(userInput[j].x - 10, userInput[j].y - 10, 20, 20);
-          } else if (patternSelect.value === 'triangles') {
-            ctx.moveTo(userInput[j].x, userInput[j].y - 10);
-            ctx.lineTo(userInput[j].x - 10, userInput[j].y + 10);
-            ctx.lineTo(userInput[j].x + 10, userInput[j].y + 10);
-            ctx.closePath();
-          } else {
-            ctx.lineTo(userInput[j].x, userInput[j].y);
+          for (let j = 0; j < userInput[color].length; j++) {
+            const { x, y } = userInput[color][j];
+
+            if (patternSelect.value === 'circles') {
+              ctx.beginPath();
+              ctx.arc(x, y, shapeSize, 0, Math.PI * 2);
+              ctx.fill();
+            } else if (patternSelect.value === 'squares') {
+              ctx.fillRect(x - shapeSize / 2, y - shapeSize / 2, shapeSize, shapeSize);
+            } else if (patternSelect.value === 'triangles') {
+              ctx.beginPath();
+              ctx.moveTo(x, y - shapeSize);
+              ctx.lineTo(x - shapeSize, y + shapeSize);
+              ctx.lineTo(x + shapeSize, y + shapeSize);
+              ctx.closePath();
+              ctx.fill();
+            } else {
+              ctx.beginPath();
+              ctx.arc(x, y, shapeSize / 2, 0, Math.PI * 2);
+              ctx.fill();
+            }
           }
-
-          ctx.stroke();
         }
 
         ctx.restore();
@@ -110,7 +139,7 @@
       const rect = canvas.getBoundingClientRect();
       const inputX = x - rect.left - canvas.width / 2;
       const inputY = y - rect.top - canvas.height / 2;
-      userInput.push({ x: inputX, y: inputY });
+      userInput[currentColor].push({ x: inputX, y: inputY });
     }
 
     canvas.addEventListener('mousemove', function(e) {
@@ -131,8 +160,23 @@
       drawKaleidoscope();
     });
 
-    patternSelect.addEventListener('change', function() {
-      userInput = [];
+    sizeInput.addEventListener('input', function() {
+      shapeSize = parseInt(sizeInput.value);
+      drawKaleidoscope();
+    });
+
+    rewindButton.addEventListener('click', function() {
+      if (userInput[currentColor].length > 0) {
+        userInput[currentColor].pop();
+        drawKaleidoscope();
+      }
+    });
+
+    clearButton.addEventListener('click', function() {
+      userInput = {};
+      for (let color of colors) {
+        userInput[color] = [];
+      }
       drawKaleidoscope();
     });
 
